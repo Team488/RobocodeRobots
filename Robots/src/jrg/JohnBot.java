@@ -12,6 +12,7 @@ public class JohnBot
   double plannedRadarTurn;
   double lastPlannedRadarTurn;
   double direction = 1;
+  Position lastEnemyPosition = new Position(0, 0);
   
   public void run()
   {
@@ -29,32 +30,70 @@ public class JohnBot
   }
     
   public void onScannedRobot(ScannedRobotEvent e)
-  {
-	  System.out.println("Enemy robot found!");
+  {	  
 	  this.absoluteHeadingToEnemyRobot = (getHeadingRadians() + e.getBearingRadians());
+	  
+	  Position enemyPos = determineEnemyLocation(e);
+	  System.out.println("My location is:              " + getSelfPosition().toString());
+	  System.out.println("Enemy robot found at:        " + enemyPos.toString());
+	  Position predictedEnemyPos = predictEnemyFutureLocation(enemyPos);
+	  System.out.println("Predicting enemy will be at: " + predictedEnemyPos.toString());
+	  double aimGunAt = determineAbsoluteBearingToPosition(predictedEnemyPos);
     
 	  double necessaryRadarTurn = this.absoluteHeadingToEnemyRobot - getRadarHeadingRadians();
 	  setTurnRadarRightRadians(1.3 * Utils.normalRelativeAngle(necessaryRadarTurn)); 
 	  
-	  pointGunAtEnemy();
+	  pointGunAt(aimGunAt);
 	  
 	  circleStrafe();
 	  
 	  FireAsneeded();
   }
+  
+  private Position getSelfPosition()
+  {
+	  return new Position(getX(), getY());
+  }
+  
+  private Position determineEnemyLocation(ScannedRobotEvent e)
+  {
+	  System.out.println("Absolute bearing to enemy: " + this.absoluteHeadingToEnemyRobot);
+	  System.out.println("Distance to enemy: " + e.getDistance());
+	  double enemyX = getX() + e.getDistance() * Math.cos(this.absoluteHeadingToEnemyRobot); 
+	  double enemyY = getY() + e.getDistance() * Math.sin(this.absoluteHeadingToEnemyRobot);
+	  
+	  return new Position(enemyX, enemyY);
+  }
+  
+  private Position predictEnemyFutureLocation(Position currentEnemyPos)
+  {	  
+	  Position predictedPosition = currentEnemyPos.clone();
+	  predictedPosition.Add(lastEnemyPosition.diffFrom(currentEnemyPos));
+	  
+	  lastEnemyPosition = currentEnemyPos;
+	  return predictedPosition;
+  }
+  
+  private double determineAbsoluteBearingToPosition(Position pos)
+  {
+	  Position currentSelfPosition = getSelfPosition();
+	  Position diff = getSelfPosition().diffFrom(pos);
+	  
+	  return Math.atan2(diff.Y, diff.X);
+  }
 
-	private void pointGunAtEnemy() {
-		double gunTurn = absoluteHeadingToEnemyRobot - this.getGunHeadingRadians();
-		  if (gunTurn > Math.PI/4)
+	private void pointGunAt(double absoluteBearing) {
+		double gunTurn = absoluteBearing - this.getGunHeadingRadians();
+		/*  if (gunTurn > Math.PI/4)
 		  {
 			  gunTurn = Math.PI/4;
-		  }
-		  setTurnGunRightRadians(gunTurn);
+		  }*/
+		  setTurnGunRightRadians(absoluteBearing);
 	}
   
 	private void FireAsneeded() {
 		  System.out.println("Firing as needed");
-		  setFire(Rules.MAX_BULLET_POWER);
+		  setFire(1);
 	}
 	
 	private void circleStrafe() {
