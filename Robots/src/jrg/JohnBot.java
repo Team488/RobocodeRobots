@@ -54,7 +54,7 @@ public class JohnBot
 	  
 	  circleStrafe();
 	  
-	  //FireAsneeded();
+	  FireAsneeded(e.getDistance());
   }
   
   private Position getSelfPosition()
@@ -100,7 +100,7 @@ public class JohnBot
       double t = 0;
       if (d >= 0)
       {
-          t = (b + sqrt(d)) / a;
+          t = (b + Math.sqrt(d)) / a;
           if (t < 0)
               t = 0;
       }
@@ -125,9 +125,11 @@ public class JohnBot
 		setTurnGunRightRadians(diffInHeadings);
 	}
   
-	private void FireAsneeded() {
-		  System.out.println("Firing as needed");
-		  setFire(1);
+	private void FireAsneeded(double distance) {
+		  if (distance < 1000)
+		  {
+			  setFire(1);
+		  }
 	}
 	
 	private void circleStrafe() {
