@@ -23,6 +23,12 @@ public class Position {
 		Y += pos.Y;
 	}
 	
+	public void ScalarMult(double scalar)
+	{
+		X *= scalar;
+		Y *= scalar;
+	}
+	
 	public double getDistanceTo(Position pos)
 	{
 		return Math.sqrt(Math.pow((pos.X - X), 2) + Math.pow((pos.Y - Y), 2));
