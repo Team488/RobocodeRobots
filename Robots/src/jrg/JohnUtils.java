@@ -1,7 +1,5 @@
 package jrg;
 
-import net.sf.robocode.serialization.ISerializableHelper;
-
 public class JohnUtils {
 
 	public static double SmallestAngleBetween(double radianA, double radianB)

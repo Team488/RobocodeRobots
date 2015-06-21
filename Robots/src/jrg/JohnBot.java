@@ -3,11 +3,8 @@ package jrg;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 import robocode.AdvancedRobot;
-import robocode.Bullet;
 import robocode.Rules;
 import robocode.ScannedRobotEvent;
 import robocode.util.Utils;
@@ -89,7 +86,10 @@ public class JohnBot
   private Position predictEnemyFutureLocation(Position currentEnemyPos)
   {	  
 	  double bulletSpeed = Rules.getBulletSpeed(1);
+	  System.out.println("ExpectedSpeed:"+ bulletSpeed);
+	  
 	  Position velocity = lastEnemyPosition.diffFrom(currentEnemyPos);
+	  
 	  
 	  double timeOfImpact = time_of_impact(currentEnemyPos.X, currentEnemyPos.Y, velocity.X, velocity.Y, bulletSpeed);
 	  
@@ -144,11 +144,18 @@ public class JohnBot
 	}
   
 	private void FireAsneeded(double distance) {
-		  if (distance < 1000)
+		double power = 1;
+		
+		if (distance < 30)
+		{
+			power = 10;
+		}
+		
+		if (distance < 1000)
 		  {
 			  if (getGunHeat() == 0)
 			  {
-				  JohnBullet b = new JohnBullet(setFireBullet(1));
+				  JohnBullet b = new JohnBullet(setFireBullet(power));
 				  myFiredBullets.add(b);
 			  }
 		  }
@@ -223,6 +230,7 @@ public class JohnBot
 		{
 			if (b != null)
 			{
+				System.out.println("Speed:" + b.inner().getVelocity());
 				paintBulletTrack(g, b, Color.BLACK);
 			}
 		}
