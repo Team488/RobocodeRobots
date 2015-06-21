@@ -39,6 +39,12 @@ public class Position {
 		return new Position(X, Y);
 	}
 	
+	public void restrict(double xMax, double yMax)
+	{
+		X = Math.max(Math.min(xMax, X), 0);
+		Y = Math.max(Math.min(yMax, Y), 0);
+	}
+	
 	public Position diffFrom(Position pos)
 	{
 		return new Position(pos.X - X, pos.Y - Y);

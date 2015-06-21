@@ -1,8 +1,13 @@
 package jrg;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import robocode.AdvancedRobot;
+import robocode.Bullet;
 import robocode.Rules;
 import robocode.ScannedRobotEvent;
 import robocode.util.Utils;
@@ -16,12 +21,15 @@ public class JohnBot
   double direction = 1;
   Position lastEnemyPosition = new Position(0, 0);
   Position predictedEnemyPosition = new Position(0, 0);
+  ArrayList<JohnBullet> myFiredBullets;
   
   public void run()
   {
 	  setAdjustRadarForRobotTurn(true);
 	  setAdjustGunForRobotTurn(true);
 	  setAdjustRadarForGunTurn(true);
+	  
+	  myFiredBullets = new ArrayList<JohnBullet>();
 	  
 	  System.out.println("Starting JohnBot.");
 	    while (true)
@@ -36,7 +44,13 @@ public class JohnBot
   {	  
 	  double absoluteHeadingRobocodeUnits = (getHeadingRadians() + e.getBearingRadians());
 	  
+	    
 	  absoluteHeadingToEnemyRobot = RobocodePhysicsUtil.ConvertRadians(absoluteHeadingRobocodeUnits);
+	  // if negative make positive, just to make debugging a little easier
+	  if (absoluteHeadingToEnemyRobot < 0)
+	  {
+		  absoluteHeadingToEnemyRobot += 2*Math.PI;
+	  }
 	  
 	  Position enemyPos = determineEnemyLocation(e.getDistance());
 	  
@@ -64,8 +78,8 @@ public class JohnBot
   
   private Position determineEnemyLocation(double distance)
   {
-	  System.out.println("Absolute bearing to enemy: " + this.absoluteHeadingToEnemyRobot);
-	  System.out.println("Distance to enemy: " + distance);
+	  //System.out.println("Absolute bearing to enemy: " + this.absoluteHeadingToEnemyRobot);
+	  //System.out.println("Distance to enemy: " + distance);
 	  double enemyX = getX() + distance * Math.cos(this.absoluteHeadingToEnemyRobot); 
 	  double enemyY = getY() + distance * Math.sin(this.absoluteHeadingToEnemyRobot);
 	  
@@ -85,6 +99,9 @@ public class JohnBot
 	  Position predictedPosition = currentEnemyPos.clone();
 	  predictedPosition.Add(velocity);
 	  
+	  predictedPosition.restrict(getBattleFieldWidth(), getBattleFieldHeight());
+	  //System.out.println("Predicted: "+ predictedPosition);
+	  //System.out.println("Height: "+ getBattleFieldHeight());
 	  lastEnemyPosition = currentEnemyPos;
 	  return predictedPosition;
   }
@@ -110,7 +127,6 @@ public class JohnBot
   
   private double determineAbsoluteBearingToPosition(Position pos)
   {
-	  Position currentSelfPosition = getSelfPosition();
 	  Position diff = getSelfPosition().diffFrom(pos);
 	  
 	  return Math.atan2(diff.Y, diff.X);
@@ -118,9 +134,11 @@ public class JohnBot
 
 	private void pointGunAt(double goalBearing) {
 		// Figure out where the gun is currently pointing
+		//System.out.println("GoalBearing:" + goalBearing);
 		double currentGunHeading = RobocodePhysicsUtil.ConvertRadians(getGunHeadingRadians());
+		//System.out.println("CurrentGun:" + currentGunHeading);
 		// Compare that to where we want to shoot
-		double diffInHeadings = currentGunHeading - goalBearing;
+		double diffInHeadings = JohnUtils.SmallestAngleBetween(currentGunHeading, goalBearing); 
 		// Point in that direction
 		setTurnGunRightRadians(diffInHeadings);
 	}
@@ -128,25 +146,54 @@ public class JohnBot
 	private void FireAsneeded(double distance) {
 		  if (distance < 1000)
 		  {
-			  setFire(1);
+			  if (getGunHeat() == 0)
+			  {
+				  JohnBullet b = new JohnBullet(setFireBullet(1));
+				  myFiredBullets.add(b);
+			  }
 		  }
 	}
 	
 	private void circleStrafe() {
-		double chassisTurn = absoluteHeadingToEnemyRobot - this.getHeadingRadians() + (Math.PI / 2)* 0.75;
+		double leftChassisTurn = 
+				JohnUtils.SmallestAngleBetween(
+						absoluteHeadingToEnemyRobot + Math.PI/2, RobocodePhysicsUtil.ConvertRadians(getHeadingRadians()));  
+		double rightChassisTurn = 
+				JohnUtils.SmallestAngleBetween(
+						absoluteHeadingToEnemyRobot - Math.PI/2, RobocodePhysicsUtil.ConvertRadians(getHeadingRadians()));
 		
+		double chassisTurn = 0;
+		if (Math.abs(leftChassisTurn) < Math.abs(rightChassisTurn))
+		{
+			System.out.println("Left");
+			chassisTurn = leftChassisTurn;
+		}
+		else
+		{
+			System.out.println("Right");
+			chassisTurn = -rightChassisTurn;
+		}
 		
-		if (chassisTurn > Math.PI/4)
-		  {
-			chassisTurn = Math.PI/4;
-		  }
-		  setTurnRightRadians(chassisTurn);
-		  
+		// There also needs to be some "repulsion" from walls.
+		// super simple - if too far from center, turn towards center?
+		
+		Position arenaCenter = new Position(getBattleFieldWidth()/2, getBattleFieldHeight()/2);
+		Position self = getSelfPosition();
+		
+		if (arenaCenter.getDistanceTo(self) > arenaCenter.Y*.66)
+		{
+			System.out.println("Turning to center");
+			// use different movement, turn to center
+			chassisTurn = 
+					JohnUtils.SmallestAngleBetween(
+							determineAbsoluteBearingToPosition(arenaCenter), RobocodePhysicsUtil.ConvertRadians(getHeadingRadians()));  
+		}
+				  
 		  if (getVelocity() == 0)
 		  {
 			  direction*= -1;
 		  }
-		  
+		  setTurnRightRadians(chassisTurn);
 		  setAhead(1000 * direction);
 	}
 	
@@ -164,10 +211,32 @@ public class JohnBot
 		g.setColor(java.awt.Color.RED);
 		g.fillRect(0, 0, 20, (int)diffInHeadings*100);
 		
-		paintLineFromRobot(g, absoluteHeadingToEnemyRobot, java.awt.Color.GREEN);
+		//paintLineFromRobot(g, absoluteHeadingToEnemyRobot, java.awt.Color.GREEN);
 		paintLineFromRobotToAbsolute(g, predictedEnemyPosition, java.awt.Color.YELLOW);
 		paintLineFromRobot(g, aimGunAt, java.awt.Color.RED);
 		
+		paintLineFromRobot(g, absoluteHeadingToEnemyRobot+ Math.PI/2, java.awt.Color.ORANGE);
+		
+		myFiredBullets.removeIf(b -> b.inner().isActive() == false);
+		System.out.println("Size:" + myFiredBullets.size());
+		for (JohnBullet b : myFiredBullets)
+		{
+			if (b != null)
+			{
+				paintBulletTrack(g, b, Color.BLACK);
+			}
+		}
+		
+	}
+	
+	private void paintBulletTrack(Graphics2D g, JohnBullet b, java.awt.Color color)
+	{
+		g.setColor(color);
+		double radians = RobocodePhysicsUtil.ConvertRadians(b.inner().getHeadingRadians());
+		Position finalPos = new Position(Math.cos(radians), Math.sin(radians));
+		finalPos.ScalarMult(1000);
+		finalPos.Add(b.initial);
+		g.drawLine((int)b.initial.X, (int)b.initial.Y, (int)finalPos.X, (int)finalPos.Y);
 	}
 	
 	private void paintLineFromRobotToAbsolute(Graphics2D g, Position pos, java.awt.Color color)
