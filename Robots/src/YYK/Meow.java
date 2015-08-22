@@ -15,12 +15,16 @@ public class Meow extends AdvancedRobot{
 		{
 		setTurnLeft(50);
 		setAhead(15);
+		System.out.println("My x is ");
+		System.out.println("my y is ");
 		execute();
 		}
 	}
 	public void onScannedRobot(ScannedRobotEvent e) {
-	    setTurnRight(20);   
-		setFire(4);
+	    //setTurnRight(40);
+		//setTurnRight(10);
+		setFire(1);
+		
 	        //ahead(100);
 		execute();
    
