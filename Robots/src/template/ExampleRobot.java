@@ -8,7 +8,7 @@ public class ExampleRobot extends Robot{
 	{
 		while (true)
 		{
-			turnGunLeft(10);
+			ahead(10);
 		}
 	}
 }
